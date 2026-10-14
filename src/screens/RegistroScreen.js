@@ -1,21 +1,24 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AuthInput from '../components/AuthInput';
 import SocialButtons from '../components/SocialButtons';
 import { colors, gradients, radii, spacing, typography } from '../theme/theme';
-import { useReadings } from '../data/ReadingsContext';
+import { useAuth } from '../data/AuthContext';
+import { notify } from '../utils/dialogs';
+import { friendlyAuthError } from '../utils/authErrors';
 
 export default function RegistroScreen({ navigation }) {
-  const { register, login } = useReadings();
+  const { signUp, isSupabaseConfigured } = useAuth();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [aceito, setAceito] = useState(false);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  const submit = () => {
+  const submit = async () => {
     const e = {};
     if (nome.trim().split(/\s+/).length < 2) e.nome = 'Informe nome e sobrenome.';
     if (!/^\S+@\S+\.\S+$/.test(email)) e.email = 'Informe um e-mail válido.';
@@ -23,14 +26,26 @@ export default function RegistroScreen({ navigation }) {
     if (!aceito) e.termos = 'Aceite os Termos de Privacidade para continuar.';
     setErrors(e);
     if (Object.keys(e).length) return;
-    register({ fullName: nome.trim(), email });
-    navigation.replace('Tabs');
+    if (!isSupabaseConfigured) {
+      notify('Supabase não configurado', 'Preencha o arquivo .env com a URL e a chave do seu projeto.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { needsConfirmation } = await signUp({ fullName: nome, email, password: senha });
+      if (needsConfirmation) {
+        notify('Confirme seu e-mail', 'Enviamos um link de confirmação. Depois de confirmar, entre com sua conta.');
+        navigation.goBack();
+      }
+      // Sem confirmação de e-mail, a sessão já existe e o app abre sozinho.
+    } catch (err) {
+      setErrors({ form: friendlyAuthError(err) });
+      setLoading(false);
+    }
   };
 
-  const social = (provider) => {
-    login({ email: `${provider.toLowerCase()}@conta.com` });
-    navigation.replace('Tabs');
-  };
+  const social = (provider) =>
+    notify(`Entrar com ${provider}`, 'Este método ainda não está ativo. Crie sua conta com e-mail e senha.');
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -58,9 +73,11 @@ export default function RegistroScreen({ navigation }) {
         </TouchableOpacity>
         {errors.termos ? <Text style={styles.error}>{errors.termos}</Text> : null}
 
-        <TouchableOpacity activeOpacity={0.85} onPress={submit}>
+        {errors.form ? <Text style={styles.error}>{errors.form}</Text> : null}
+
+        <TouchableOpacity activeOpacity={0.85} onPress={submit} disabled={loading}>
           <LinearGradient colors={gradients.button} style={styles.cta}>
-            <Text style={styles.ctaLabel}>Entrar</Text>
+            {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.ctaLabel}>Criar conta</Text>}
           </LinearGradient>
         </TouchableOpacity>
 

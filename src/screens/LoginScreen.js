@@ -1,34 +1,58 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AuthInput from '../components/AuthInput';
 import SocialButtons from '../components/SocialButtons';
 import { colors, gradients, radii, spacing, typography } from '../theme/theme';
-import { useReadings } from '../data/ReadingsContext';
+import { useAuth } from '../data/AuthContext';
+import { notify } from '../utils/dialogs';
+import { friendlyAuthError } from '../utils/authErrors';
 
 export default function LoginScreen({ navigation }) {
-  const { login } = useReadings();
+  const { signIn, resetPassword, isSupabaseConfigured } = useAuth();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [aceito, setAceito] = useState(false);
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  const submit = () => {
+  const submit = async () => {
     const e = {};
     if (!/^\S+@\S+\.\S+$/.test(email)) e.email = 'Informe um e-mail válido.';
     if (senha.length < 6) e.senha = 'A senha deve ter ao menos 6 caracteres.';
     if (!aceito) e.termos = 'Aceite os Termos de Privacidade para continuar.';
     setErrors(e);
     if (Object.keys(e).length) return;
-    login({ email });
-    navigation.replace('Tabs');
+    if (!isSupabaseConfigured) {
+      notify('Supabase não configurado', 'Preencha o arquivo .env com a URL e a chave do seu projeto.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await signIn({ email, password: senha });
+      // A navegação para o app acontece sozinha quando a sessão é criada.
+    } catch (err) {
+      setErrors({ form: friendlyAuthError(err) });
+      setLoading(false);
+    }
   };
 
-  const social = (provider) => {
-    login({ email: `${provider.toLowerCase()}@conta.com` });
-    navigation.replace('Tabs');
+  const forgot = async () => {
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      setErrors({ email: 'Digite seu e-mail acima para receber o link de redefinição.' });
+      return;
+    }
+    try {
+      await resetPassword(email);
+      notify('Verifique seu e-mail', 'Se houver uma conta com esse e-mail, enviamos um link para redefinir a senha.');
+    } catch (err) {
+      notify('Não foi possível enviar', friendlyAuthError(err));
+    }
   };
+
+  const social = (provider) =>
+    notify(`Entrar com ${provider}`, 'Este método ainda não está ativo. Entre com e-mail e senha.');
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -60,7 +84,7 @@ export default function LoginScreen({ navigation }) {
           error={errors.senha}
         />
 
-        <TouchableOpacity onPress={() => Alert.alert('Recuperar senha', 'Enviaremos um link de redefinição para o seu e-mail.')}>
+        <TouchableOpacity onPress={forgot}>
           <Text style={styles.link}>Esqueceu a senha?</Text>
         </TouchableOpacity>
 
@@ -74,9 +98,11 @@ export default function LoginScreen({ navigation }) {
         </TouchableOpacity>
         {errors.termos ? <Text style={styles.error}>{errors.termos}</Text> : null}
 
-        <TouchableOpacity activeOpacity={0.85} onPress={submit}>
+        {errors.form ? <Text style={styles.error}>{errors.form}</Text> : null}
+
+        <TouchableOpacity activeOpacity={0.85} onPress={submit} disabled={loading}>
           <LinearGradient colors={gradients.button} style={styles.cta}>
-            <Text style={styles.ctaLabel}>Entrar</Text>
+            {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.ctaLabel}>Entrar</Text>}
           </LinearGradient>
         </TouchableOpacity>
 

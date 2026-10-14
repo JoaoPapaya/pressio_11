@@ -1,20 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import MenuButton from '../components/MenuButton';
 import { colors, gradients, radii, spacing, typography } from '../theme/theme';
-import { useReadings } from '../data/ReadingsContext';
+import { useAuth } from '../data/AuthContext';
+import { notify } from '../utils/dialogs';
 
 const ICON = (name) => <Feather name={name} size={24} color={colors.textPrimary} />;
 
 export default function MaisScreen({ navigation }) {
-  const { logout } = useReadings();
+  const { signOut } = useAuth();
 
-  const info = (title, msg) => () => Alert.alert(title, msg);
-  const exit = () => {
-    logout();
-    navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Login' }] });
+  const info = (title, msg) => () => notify(title, msg);
+  // Ao encerrar a sessão, o app volta ao Login sozinho.
+  const exit = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      notify('Não foi possível sair', err.message);
+    }
   };
 
   return (

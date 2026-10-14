@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useMemo } from 'react';
 import { addDays, startOfDay } from '../utils/dates';
+import { useAuth } from './AuthContext';
 
 const ReadingsContext = createContext(null);
 
@@ -71,18 +72,8 @@ export function ReadingsProvider({ children }) {
     { id: 'e4', kind: 'glicemia', label: '95 mg/dL', date: '12 Out' },
     { id: 'e5', kind: 'glicemia', label: '98 mg/dL', date: '11 Out' },
   ]);
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState({ fullName: 'Maria Alice', email: 'maria@exemplo.com' });
-  const userName = (user?.fullName || profile.fullName).split(' ')[0];
-
-  const login = ({ email }) => {
-    setUser({ email, fullName: profile.fullName });
-  };
-  const register = ({ fullName, email }) => {
-    setProfile({ fullName, email });
-    setUser({ email, fullName });
-  };
-  const logout = () => setUser(null);
+  const { profile } = useAuth();
+  const userName = (profile?.full_name || 'Você').split(' ')[0];
 
   const toggleMedication = (id) =>
     setMedications((prev) => prev.map((m) => (m.id === id ? { ...m, done: !m.done } : m)));
@@ -136,12 +127,6 @@ export function ReadingsProvider({ children }) {
     readings,
     medications,
     userName,
-    user,
-    profile,
-    setProfile,
-    login,
-    register,
-    logout,
     appointments,
     addAppointment,
     toggleMedication,

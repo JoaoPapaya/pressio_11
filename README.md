@@ -12,7 +12,28 @@ App fiel ao protótipo enviado, com 3 telas principais e navegação funcional:
 - **Exportação de Relatórios** — registros de pressão e glicemia com ações de baixar e remover.
 - **Perfil** e **Mais** — menus conforme o protótipo (Conta, Avatar, Notificação, Acessibilidade / Termos, Central de ajuda, Gerenciamento, Sobre, Sair).
 
-Fluxo: o app abre em **Login** → **Tabs**. "Sair" em *Mais* volta ao Login.
+Fluxo: o app abre em **Login** (ou direto no app, se já houver sessão salva). "Sair" em *Mais* volta ao Login.
+
+## Banco de dados e autenticação (Supabase)
+
+CRUD de usuário com **Supabase Auth + tabela `profiles`** (com RLS: cada pessoa acessa só o próprio perfil):
+
+| Operação | Onde | Como |
+|---|---|---|
+| Create | Registro | `auth.signUp` + gatilho que cria a linha em `profiles` |
+| Read | Login / Perfil | `auth.signInWithPassword`, sessão persistida e leitura de `profiles` |
+| Update | Conta | nome (`profiles.update`), senha (`auth.updateUser`) |
+| Delete | Conta | função `delete_my_account()` apaga o usuário e o perfil (cascata) |
+
+Configuração:
+
+1. Crie um projeto em https://supabase.com.
+2. No **SQL Editor**, rode o conteúdo de `supabase/schema.sql`.
+3. Copie `.env.example` para `.env` e preencha `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_ANON_KEY` (Project Settings > API). Use só a chave **anon**.
+4. Rode `npm install` e `npx expo start --web -c`.
+
+Em *Authentication > Providers > Email*, desative "Confirm email" para testar sem confirmar por e-mail; com ela ligada, o app avisa para confirmar antes de entrar. Os botões Google/Apple/Facebook ainda não estão ativos.
+
 
 ## Funcionalidades implementadas
 
@@ -44,7 +65,9 @@ pressio-app/
 ├── app.json                      # Configuração do Expo
 ├── src/
 │   ├── theme/theme.js            # Cores, tipografia, espaçamento
+│   ├── data/AuthContext.js       # Sessão e CRUD de conta/perfil (Supabase)
 │   ├── data/ReadingsContext.js   # Estado global das leituras (Context API)
+│   ├── lib/supabase.js           # Cliente Supabase
 │   ├── components/
 │   │   ├── GlassCard.js          # Cartão translúcido reutilizável
 │   │   ├── ValuePill.js          # Campo de valor estilo "pill" (Nova Leitura)
@@ -63,6 +86,6 @@ pressio-app/
 ## Próximos passos sugeridos
 
 - Persistência local (AsyncStorage) ou backend real para as leituras.
-- Autenticação de usuário.
+- Salvar leituras, consultas e medicações no Supabase (hoje ficam só em memória).
 - Geração real de PDF no botão "Exportar Relatório" (ex: `expo-print`).
 - Notificações push para lembretes de medicação (`expo-notifications`).

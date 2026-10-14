@@ -1,16 +1,17 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import MenuButton from '../components/MenuButton';
 import { colors, gradients, spacing, typography } from '../theme/theme';
-import { useReadings } from '../data/ReadingsContext';
+import { useAuth } from '../data/AuthContext';
+import { notify } from '../utils/dialogs';
 
 const ICON = (name) => <Feather name={name} size={24} color={colors.textPrimary} />;
 
-export default function PerfilScreen() {
-  const { profile } = useReadings();
-  const soon = (t) => () => Alert.alert(t, 'Esta seção será liberada em breve.');
+export default function PerfilScreen({ navigation }) {
+  const { profile } = useAuth();
+  const soon = (t) => () => notify(t, 'Esta seção será liberada em breve.');
 
   return (
     <View style={styles.screen}>
@@ -22,10 +23,10 @@ export default function PerfilScreen() {
           <View style={styles.avatar}>
             <Feather name="user" size={40} color={colors.textPrimary} />
           </View>
-          <Text style={styles.name}>{profile.fullName}</Text>
+          <Text style={styles.name}>{profile?.full_name || '...'}</Text>
         </View>
 
-        <MenuButton icon={ICON('user')} title="Conta" subtitle="Nome, senha, email" onPress={soon('Conta')} />
+        <MenuButton icon={ICON('user')} title="Conta" subtitle="Nome, senha, email" onPress={() => navigation.navigate('Conta')} />
         <MenuButton icon={ICON('edit-2')} title="Avatar" subtitle="Criar, alterar" onPress={soon('Avatar')} />
         <MenuButton icon={ICON('bell')} title="Notificação" subtitle="Preferências, lembretes, alertas" onPress={soon('Notificação')} />
         <MenuButton icon={ICON('eye')} title="Acessibilidade" subtitle="Fonte, contraste, idioma" onPress={soon('Acessibilidade')} />
